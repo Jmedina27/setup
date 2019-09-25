@@ -1,0 +1,24 @@
+---
+# vars file for roles/setup
+internal_interface:
+        - ens192
+        - ens224
+        - ens256
+services:
+        - dhcp
+        - tftp
+        - dns
+        - http
+        - https
+        - nfs
+        - ldap
+        - ldaps
+packages:
+        - vim-enhanced
+        - net-tools
+        - lsof
+        - tcpdump
+        - iotop
+        - iptraf
+        - psacct
+        - arpwatch
