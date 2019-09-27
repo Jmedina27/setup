@@ -2,8 +2,8 @@
 # vars file for roles/setup
 internal_interface:
         - ens192
-        - ens224
-        - ens256
+        #- ens224
+        #- ens256
 services:
         - dhcp
         - tftp
