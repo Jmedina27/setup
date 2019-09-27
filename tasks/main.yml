@@ -15,17 +15,14 @@
 - name: disbale SELINUX
   lineinfile:
           dest: /etc/SELINUX/config
+          state: present
           regexp: 'SELINUX=enforcing'
-          replace: 'SELINUX=disabled'
+          line: 'SELINUX=disabled'
           backup: yes
-- name: 0 to force
-  lineinfile:
-          path: /sys/fs/selinux/enforce
-          line: "0"
-          insertafter: EOF
+- name: enforce selinux
+  command: echo 0 > /sys/fs/selinux/enforce
 - name: reboot
-  shell: sleep 5 && reboot
-  async: 1
+  command: reboot
   poll: 0
 - name: enable ip forwarding
   lineinfile:
@@ -37,6 +34,8 @@
         name: net.ipv4.ip_forward
         value: 1
         sysctl_set: yes
+- name: enable ip forwarding w/o reboot
+  command: systctl -w net.ipv4.ip_forward=1
 - name: update system
   yum: name=* state=latest update_cache=true
 - name: install packages 
@@ -51,7 +50,7 @@
           state: enabled
 - name: firewall zone config internal
   firewalld:
-          zone: external
+          zone: internal
           interface: "{{ item }}"
           permanent: true
           state: enabled
@@ -62,15 +61,20 @@
           zone: external
           masquerade: yes
           permanent: true
+- name: NAT
+  command: firewall-cmd --permanent --direct --passthrough ipv4 -t nat -l POSTROUTING -o ens160 -j MASQUERADE -s 172.16.1.0/24
 - name: Enable services on internal
   firewalld:
           zone: internal
           service: "{{ item }}"
           permanent: true
   with_items: "{{ services }}"
+- name: reload firewall
+  command: firewall-cmd --complete-reload
 - name: install dhcp
   yum: name=dhcp state=installed update_cache=true
-
+- name: empty dhcpd conf file
+  command: echo "#" > /usr/share/doc/dhcp-4.2.5/dhcpd.conf.example
 - name: cp dhcpd.service to dhcpd.conf
   copy:
           src: /usr/share/doc/dhcp-4.2.5/dhcpd.conf.example
@@ -78,7 +82,13 @@
           remote_src: yes
 - name: copy dhcp_service
   copy:
-          src: /usr/lib/system/dhcpd.service
-          dest: /etc/system/system/
+          src: /usr/lib/systemd/system/dhcpd.service
+          dest: /etc/systemd/system/
           remote_src: yes
+- name: EXEC
+  lineinfile:
+          dest: /etc/systemd/system/dhcpd.service
+          state: present
+          regexp: "^ExecStart=/usr/sbin/dhcpd -f -cf /etc/dhcp/dhcpd.conf -user dhcpd -group dhcpd --no-pid"
+          line: "ExecStart=/usr/lib/dhcpd -f -cf /etc/dhcp/dhcpd.conf -user dhcpd -group dhcpd --no-pid ens192"
 
